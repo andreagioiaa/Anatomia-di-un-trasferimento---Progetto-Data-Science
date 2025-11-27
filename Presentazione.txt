@@ -1,0 +1,29 @@
+8 minuti di tempo per la presentazione + 12 minuti di domande sulla parte teorica
+
+Slides fatte su Jupyter notebook
+
+Scaletta della presentazione:
+- Introduzione, motivazioni e domande che ci si è posti (In 1 o 2 slide ci facciamo domande come): 
+	- Perché si è deciso di svolgere questo progetto
+	- Perché il dominio è importante
+	- Quali sono le conoscenze pregresse (se ve ne sono)
+	- Quali sono domande ci si è posti e che si cerca di rispondere attraverso lo studio
+- Descrizione del/i dataset usato/i (1 o 2 slide per fornire informazioni di contesto riguardanti i dati usati nel progettino):
+	- Quale/i dataset è/sono stati analizzati?
+	- Che dati contengno contiene/contengono? (a grandi linee, non scendere nei dettagli tecnici)
+	- Eventualmente, che dati interessanti invece non sono presenti?
+	- Chi ha creato il dataset?
+	- Quando è stato creato il dataset?
+	- È dispobilile online? In tal caso, aggiungere un riferimento
+- Descrizione delle analisi effettuate: presentando per ciascuna domanda come si sono trovate le risposte (calcoli e/o visualizzazioni), (Da 5 a 10 slide per descrivete l'analisi effettuata):
+	- Presentando come si è risposto a ciascuna domanda
+	- Riportate le risposte in sequenza; nello stesso ordine in cui sono state precedentemente presentate
+	- Le risposte alle vostre domande devono trovare validazioni nelle visualizzazioni o in tabelle (ad esempio, mostrando i coefficienti di correlazioni tra gruppi di dati)
+	- Non inserire codice sorgente nelle slide! Queste devono contenere solo testo e immagini (grafici/mappe)
+- Conclusioni: veloce riepilogo dei risultati principali (main findings) (Riassumete brevemente in una slide i risultati del vostro studio):
+	- Presentando una a una le risposte alle domande che vi siete posti
+	- In pratica, scrivete cosa si è imparato o scoperto attraverso il vostro studio: cosa sappiamo ora che non sapevamo prima? Cosa abbiamo scoperto?
+	- Non scrivete nulla nelle conclusioni che non sia stato oggetto della vostra analisi
+	- Non cadete nella retorica ma attenetevi ai vostri dati, evitando frasi del tipo:
+		-"Si è notato che le emissione di C02 sono in continuo aumento; quindi i cittadini dovrebbero essere più consapevoli, consumare meno, non sprecare acqua, usare il trasporto pubblico..." Queste sono nozioni generiche di buon senso ma note a tutti anche prima del vostro studio. Mantenete il focus sulla vostra analisi, in modo oggettivo
+Non fatevi tentare dalla retorica.. "vogliamo tutti bene alla mamma", "il nuoto è uno sport completo", "si stava meglio quando di stava peggio"..

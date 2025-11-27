@@ -137,138 +137,91 @@ def valutaP(p):
     else:
         print("Interpretazione: Correlazione NON significativa (p >= 0.05)")
 
-def aggiungiSpesaReale(df_spesa_stagionale):
-    """
-    Aggiunge la colonna 'Spesa_Reale_Mld_EUR' normalizzando i prezzi
-    basandosi sul costo medio di un trasferimento nell'anno base (ultima stagione).
-    """
-    # FIX: Ricostruisco i valori in Euro partendo dai Miliardi che hai già
-    # Spesa_Mld_EUR è in miliardi, quindi moltiplico per 1 miliardo per avere gli euro
-    spesa_in_euro = df_spesa_stagionale['Spesa_Mld_EUR'] * 1_000_000_000
-    
-    # 1. Calcolo il costo medio per singolo trasferimento
-    df_spesa_stagionale['Costo_Medio_Unitario'] = spesa_in_euro / df_spesa_stagionale['Volume_Trasferimenti']
-
-    # 2. Definisco l'anno base (prendo l'ultima stagione disponibile)
-    costo_base = df_spesa_stagionale.iloc[-1]['Costo_Medio_Unitario']
-    anno_base = df_spesa_stagionale.iloc[-1]['Anno-Calcistico']
-    
-    print(f"--- NORMALIZZAZIONE INFLAZIONE ---")
-    print(f"Anno Base per i prezzi: {anno_base} (Costo medio: {costo_base/1_000_000:.2f} Mln €)")
-
-    # 3. Calcolo la Spesa Reale
-    # Formula: SpesaNominale * (CostoBase / CostoAnnoCorrente)
-    df_spesa_stagionale['Spesa_Reale_Mld_EUR'] = df_spesa_stagionale['Spesa_Mld_EUR'] * (costo_base / df_spesa_stagionale['Costo_Medio_Unitario'])
-    
-    return df_spesa_stagionale
-
-def graficoConfrontoNominaleReale(df_aggregato):
-    plt.figure(figsize=(12, 7))
-    sns.set_theme(style="darkgrid") # O usa lo stile scuro che preferisci
-
-    # Linea 1: Spesa Nominale (Quello che si legge sui giornali)
-    sns.lineplot(
-        data=df_aggregato, 
-        x='Anno-Calcistico', 
-        y='Spesa_Mld_EUR', 
-        label='Spesa Nominale (Cifre Ufficiali)', 
-        marker='o', color='gray', linestyle='--', alpha=0.6, linewidth=2
-    )
-
-    # Linea 2: Spesa Reale (Il potere d'acquisto effettivo)
-    sns.lineplot(
-        data=df_aggregato, 
-        x='Anno-Calcistico', 
-        y='Spesa_Reale_Mld_EUR', 
-        label='Spesa Reale (Al netto inflazione mercato)', 
-        marker='o', color='#ff3333', linewidth=3
-    )
-
-    # Area tra le due curve per evidenziare l'inflazione
-    plt.fill_between(
-        df_aggregato['Anno-Calcistico'], 
-        df_aggregato['Spesa_Mld_EUR'], 
-        df_aggregato['Spesa_Reale_Mld_EUR'], 
-        color='red', alpha=0.1
-    )
-
-    plt.title("L'Illusione della Spesa: Nominale vs Reale (Base 2024)", fontsize=16, fontweight='bold', color='#333')
-    plt.ylabel("Miliardi di € (Valuta 2024)", fontsize=12)
-    plt.xlabel("Stagione", fontsize=12)
-    plt.xticks(rotation=45)
-    plt.legend()
-    
-    nomeFile = cartGrafici + 'confronto_spesa_nominale_reale.png'
-    plt.savefig(nomeFile)
-    plt.show()
-    print(f"Grafico confronto salvato in {nomeFile}")
-
 def graficoCorrelazioneVolumeSpesa(df_aggregato):
     """
-    Versione PULITA per presentazione orale (FIXED: linewidths error).
+    Genera uno scatter plot (con regressione) che mostra la correlazione tra il Volume dei trasferimenti e la Spesa in Mld.
+
+    - Usa 'Volume_Trasferimenti' (X)
+    - Usa 'Spesa_Mld_EUR' (Y)
+    - Usa 'Anno-Calcistico' (Etichette)
+    - Visualizza il coefficiente di Pearson (r) e il p-value (p).
     """
+    
     if df_aggregato is None or df_aggregato.empty:
+        print("DataFrame aggregato non valido. Impossibile creare il grafico.")
         return None
 
     r, p = analisiCorrelazione(df_aggregato)
-    
+    valutaPearson(r)    # valutazione coefficiente di Pearson
+    valutaP(p)  # valutazione p-value
+
+    # --- Nomi delle colonne FISSATI (in base al tuo DataFrame) ---
     colonna_x = 'Volume_Trasferimenti'
     colonna_y = 'Spesa_Mld_EUR'
     colonna_label = 'Anno-Calcistico'
+    # ---
 
-    plt.figure(figsize=(12, 7))
-    sns.set_style("whitegrid")
+    # Controllo di sicurezza
+    colonne_necessarie = [colonna_x, colonna_y, colonna_label]
+    if not all(col in df_aggregato.columns for col in colonne_necessarie):
+        print(f"Errore: La funzione si aspettava le colonne {colonne_necessarie}.")
+        print(f"Colonne trovate nel DataFrame: {df_aggregato.columns.tolist()}")
+        return None
+    # --- Fine controllo ---
 
-    # 1. DISEGNA TUTTO (Base visibile)
+    plt.figure(figsize=(10, 6))
+
+    # Usa regplot con i nomi corretti
     sns.regplot(
         data=df_aggregato,
         x=colonna_x,
-        y=colonna_y,
-        # CORREZIONE QUI: cambiato 'linewidth' in 'linewidths'
-        scatter_kws={'s': 200, 'alpha': 0.9, 'edgecolor': 'white', 'linewidths': 1.5, 'color': '#2c7bb6'}, 
-        line_kws={'color': '#d62728', 'linestyle': '--', 'linewidth': 2.5, 'label': f'Trend Lineare ($R={r:.2f}$)'}
+        y=colonna_y,   # <-- CORRETTO
+        scatter_kws={'s': 80, 'alpha': 0.7, 'edgecolor': 'k'}, 
+        line_kws={'color': 'red', 'linestyle': '--'} 
     )
 
-    # 2. EVIDENZIAZIONE SELETTIVA (Solo cerchi rossi)
-    anni_covid = ['20/21', '21/22']
-    
-    # Calcolo offset dinamico
-    y_range = df_aggregato[colonna_y].max() - df_aggregato[colonna_y].min()
-    offset = y_range * 0.035 
-
+    # --- Posizionamento Etichette (Anni) ---
     for i in range(df_aggregato.shape[0]):
-        anno = df_aggregato[colonna_label].iloc[i]
-        x_val = df_aggregato[colonna_x].iloc[i]
-        y_val = df_aggregato[colonna_y].iloc[i]
+        # Offset dinamico per evitare sovrapposizioni
+        y_range = df_aggregato[colonna_y].max() - df_aggregato[colonna_y].min()
+        offset = y_range * 0.015 # 1.5% dell'intervallo Y
         
-        if anno in anni_covid:
-            # --- SOLO CERCHIO ROSSO ---
-            # Anche qui usiamo linewidths per sicurezza
-            plt.scatter([x_val], [y_val], s=350, facecolors='none', edgecolors='red', linewidths=3.5, zorder=10)
-            # Etichetta Rossa
-            plt.text(x_val, y_val - (offset), anno, color='#d62728', fontweight='bold', fontsize=12, ha='center', va='top', zorder=11)
-        else:
-            # --- NORMALITÀ ---
-            plt.text(x_val, y_val - offset, anno, color='black', fontsize=10, fontweight='bold', ha='center', va='top', alpha=0.8)
+        plt.text(
+            x=df_aggregato[colonna_x].iloc[i],
+            y=df_aggregato[colonna_y].iloc[i] - offset, # <-- CORRETTO
+            s=str(df_aggregato[colonna_label].iloc[i]), # <-- CORRETTO
+            ha='center',
+            va='top',
+            fontdict=dict(color='black', size=9)
+        )
 
-    # Box statistiche
+    # --- Box con Statistiche (r e p) ---
     stats_text = f"Pearson $r$: {r:.3f}\n$p$-value: {p:.3f}"
-    plt.text(0.02, 0.95, stats_text, transform=plt.gca().transAxes, fontsize=11,
-             bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.95, edgecolor='#cccccc'))
+    plt.text(
+        0.05, 0.95,
+        stats_text,
+        transform=plt.gca().transAxes,
+        fontsize=10,
+        verticalalignment='top',
+        horizontalalignment='left',
+        bbox=dict(boxstyle='round,pad=0.4', facecolor='white', alpha=0.8, edgecolor='gray')
+    )
+    
+    # --- Titoli e Assi (Aggiornati) ---
+    plt.title('Correlazione tra Volume dei Trasferimenti e Spesa Totale', fontsize=14)
+    plt.xlabel('Volume Trasferimenti (Numero Totale di Acquisti)', fontsize=12)
+    plt.ylabel('Spesa Totale (Miliardi di €)', fontsize=12) # <-- CORRETTO
+    plt.grid(True, linestyle='--', alpha=0.5)
 
-    # Titoli e Label
-    plt.title('Correlazione Volume vs Spesa', fontsize=16, fontweight='bold', pad=20)
-    plt.xlabel('Volume Trasferimenti (Numero Acquisti)', fontsize=13)
-    plt.ylabel('Spesa Totale (Miliardi €)', fontsize=13)
-    
-    # Legenda in basso a destra
-    plt.legend(loc='lower right', frameon=True, fontsize=12, facecolor='white', framealpha=1)
-    
     plt.tight_layout()
-    nomeFile = cartGrafici + 'scatterplot_finale_clean.png'
+    
+    nomeFile = cartGrafici + 'scatterplot_correlazione_VolumeTrasferimenti_SpesaAnnuale_conCoefficienti.png'
     plt.savefig(nomeFile)
     plt.show()
-    print(f"Grafico salvato: {nomeFile}")
+    plt.close()
+
+    print(f"Grafico con statistiche salvato come '{nomeFile}'")
+    return
 
 def istogrammaSpeseAnnuali(trasferimentiAgglomerati):
     """
@@ -343,18 +296,11 @@ trasferimenti_totale = pulisciTrasferimenti(caricaInfo(cartDati + 'transfers.csv
 # print(trasferimenti_totale.head()) # stampa la testa del DataFrame (testa: prime 5 righe)
 # print(trasferimenti_totale.tail()) # stampa la coda del DataFrame (coda: ultime 5 righe)
 
-# PRE: Sistemo i dati
 trasferimentiAnnuali = calcoloAnnuali(trasferimenti_totale)
 print(trasferimentiAnnuali)
-trasferimentiAnnuali = aggiungiSpesaReale(trasferimentiAnnuali)
 
-
-# GRAFICI
-# 1: Istogramma Spese Annuali
-istogrammaSpeseAnnuali(trasferimentiAnnuali)
-
-# 2. Grafico Comparativo - Spesa Annuale/Spesa Inflazionata
-graficoConfrontoNominaleReale(trasferimentiAnnuali)
-
-# 3. Scatterplot (Analisi Correlazione con Focus COVID)
+# Analisi e grafico correlazione tra "volume trasferimenti" e "spesa annuale"
 graficoCorrelazioneVolumeSpesa(trasferimentiAnnuali)
+
+# Istogramma con spese annuali
+istogrammaSpeseAnnuali(trasferimentiAnnuali)
