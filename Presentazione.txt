@@ -1,4 +1,4 @@
-8 minuti di tempo per la presentazione + 12 minuti di domande sulla parte teorica
+8 minuti di tempo per la presentazione
 
 Slides fatte su Jupyter notebook
 
