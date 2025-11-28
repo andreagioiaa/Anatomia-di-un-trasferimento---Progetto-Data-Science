@@ -1,4 +1,6 @@
-8 minuti di tempo per la presentazione
+Info sull'esame di scienza dei dati:
+
+8 minuti di tempo per la presentazione + 12 minuti relative alla parte teorica del corso (non per forza sul progetto)
 
 Slides fatte su Jupyter notebook
 

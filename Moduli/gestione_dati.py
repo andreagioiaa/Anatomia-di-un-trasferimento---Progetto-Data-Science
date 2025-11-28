@@ -3,7 +3,7 @@ import os
 from scipy.stats import pearsonr
 
 def carica_dati(percorso_file):
-    """Carica il csv e restituisce il DF o None."""
+    """Carica il csv e restituisce il DataFrame o None."""
     if os.path.exists(percorso_file):
         print(f"[INFO] Caricamento: {percorso_file}...")
         return pd.read_csv(percorso_file)
@@ -78,5 +78,17 @@ def analizza_efficienza(df_raw, stagioni_target):
     return df_agg.sort_values('Anno-Calcistico')
 
 def calcola_correlazione(df, col_x, col_y):
-    """Wrapper per Pearson puro."""
+    """Calcolo coefficiente di Pearson e P-value"""
     return pearsonr(df[col_x], df[col_y])
+
+
+def focusVerde(df_efficienza_full):
+    stagioni_focus = ['20/21', '21/22', '22/23'] 
+    df_focus = df_efficienza_full[df_efficienza_full['Anno-Calcistico'].isin(stagioni_focus)].copy()
+    df_focus['Anno-Calcistico'] = pd.Categorical(
+        df_focus['Anno-Calcistico'], 
+        categories=stagioni_focus, 
+        ordered=True
+    )
+    return df_focus.sort_values('Anno-Calcistico')
+#==== FINE FILE ===#

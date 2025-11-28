@@ -20,10 +20,9 @@ def salva_e_mostra(fig, path_completo):
 
 def plot_confronto_nominale_reale(df, cartella_output):
     """
-    Ripristinato:
-    - Stili di linea specifici (tratteggiato vs solido)
+    Funzione:
+    - confronto tra spesa reale e spesa inflazionata
     - Area rossa di riempimento (inflazione)
-    - Colori originali
     """
     plt.figure(figsize=(12, 7))
     
@@ -63,11 +62,9 @@ def plot_confronto_nominale_reale(df, cartella_output):
 
 def plot_scatter_volume_spesa(df, r, p, cartella_output):
     """
-    Ripristinato:
-    - Logica "Anni COVID" (cerchi rossi vuoti)
-    - Calcolo offset dinamico per le etichette
-    - Box statistico in alto a sinistra
-    - Scatter size e colori specifici
+    Funzione:
+    - scatterplot correlazione volume trasferimenti - costo annuale
+    - identifico valori sfasati e li cerchio
     """
     colonna_x = 'Volume_Trasferimenti'
     colonna_y = 'Spesa_Mld_EUR'
@@ -101,15 +98,15 @@ def plot_scatter_volume_spesa(df, r, p, cartella_output):
             # --- SOLO CERCHIO ROSSO ---
             plt.scatter([x_val], [y_val], s=350, facecolors='none', edgecolors='red', linewidths=3.5, zorder=10)
             # Etichetta Rossa
-            plt.text(x_val, y_val - (offset), anno, color='#d62728', fontweight='bold', fontsize=12, ha='center', va='top', zorder=11)
+            plt.text(x_val, y_val - (offset), "", color='#d62728', fontweight='bold', fontsize=12, ha='center', va='top', zorder=11)
         else:
             # --- NORMALITÀ ---
-            plt.text(x_val, y_val - offset, anno, color='black', fontsize=10, fontweight='bold', ha='center', va='top', alpha=0.8)
+            plt.text(x_val, y_val - offset, "", color='black', fontsize=10, fontweight='bold', ha='center', va='top', alpha=0.8)
 
     # Box statistiche
-    stats_text = f"Pearson $r$: {r:.3f}\n$p$-value: {p:.3f}"
-    plt.text(0.02, 0.95, stats_text, transform=plt.gca().transAxes, fontsize=11,
-             bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.95, edgecolor='#cccccc'))
+    #stats_text = f"Pearson $r$: {r:.3f}\n$p$-value: {p:.3f}"
+    #plt.text(0.02, 0.95, stats_text, transform=plt.gca().transAxes, fontsize=11,
+    #         bbox=dict(boxstyle='round,pad=0.5', facecolor='white', alpha=0.95, edgecolor='#cccccc'))
 
     plt.title('Correlazione Volume vs Spesa', fontsize=16, fontweight='bold', pad=20)
     plt.xlabel('Volume Trasferimenti (Numero Acquisti)', fontsize=13)
@@ -120,9 +117,8 @@ def plot_scatter_volume_spesa(df, r, p, cartella_output):
 
 def plot_istogramma_spese(df, cartella_output):
     """
-    Ripristinato:
-    - Posizionamento preciso del testo sopra le barre
-    - Griglia solo sull'asse Y
+    Funzione:
+        - istogramma spese annuali: agglomerato spese (considerati tutti i trasferimenti)
     """
     anni = df['Anno-Calcistico']
     spese = df['Spesa_Mld_EUR']
@@ -142,7 +138,7 @@ def plot_istogramma_spese(df, cartella_output):
         plt.text(
             bar.get_x() + bar.get_width() / 2.0,
             yval + (spese.max() * 0.01),
-            f'{yval:.2f}',
+            "",
             ha='center', va='bottom', fontsize=9
         )
 
@@ -297,74 +293,7 @@ def plot_focus_covid(df_focus, cartella_output):
     
     salva_e_mostra(plt, os.path.join(cartella_output, 'focus_trend_covid.png'))
 
-def plot_focus_2122_head_to_head(df_focus, cartella_output):
-    """
-    Grafico a Barre "Testa a Testa" per la singola stagione 21/22.
-    Zoom verticale estremo per evidenziare il risparmio (Underspending).
-    """
-    # Filtriamo per sicurezza, anche se ci aspettiamo solo il 21/22
-    target_season = '21/22'
-    df_single = df_focus[df_focus['Anno-Calcistico'] == target_season].copy()
-    
-    if df_single.empty:
-        print(f"[ERROR] Dati per {target_season} non trovati.")
-        return
-
-    # Estrazione valori scalari
-    spesa = df_single['Spesa_Mld_EUR'].values[0]
-    valore = df_single['Valore_Totale_Mld_EURO'].values[0]
-    gap_mln = (spesa - valore) * 1000
-
-    plt.figure(figsize=(8, 7))
-
-    # --- SETUP DEI DATI PER LE BARRE ---
-    labels = ['Valore Stimato\n(Fair Value)', 'Spesa Reale\n(Prezzo Pagato)']
-    values = [valore, spesa]
-    colors = ['#1D3557', '#E63946'] # Blu scuro (Valore), Rosso (Spesa)
-
-    # --- ZOOM VERTICALE (Il trucco per vedere la differenza) ---
-    # Calcoliamo un range molto stretto attorno ai valori
-    min_y = min(values) - 0.05
-    max_y = max(values) + 0.10
-    plt.ylim(min_y, max_y)
-
-    # Disegno le barre
-    bars = plt.bar(labels, values, color=colors, width=0.5, edgecolor='black', linewidth=1.5)
-
-    # --- ANNOTAZIONI SULLE BARRE ---
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2., height + 0.005,
-                 f'{height:.3f} Mld €',
-                 ha='center', va='bottom', fontsize=12, fontweight='bold')
-
-    # --- DISEGNO DEL GAP (La parte critica) ---
-    # Disegno una linea che connette la cima delle due barre
-    # Coordinate: centro barra 1 -> centro barra 2
-    x_start = bars[0].get_x() + bars[0].get_width()/2
-    x_end = bars[1].get_x() + bars[1].get_width()/2
-    
-    # Linea tratteggiata che estende la barra più alta (Valore) verso destra
-    plt.hlines(y=valore, xmin=x_start, xmax=x_end, colors='gray', linestyles='--', linewidth=1)
-    
-    # Freccia che scende dal livello del Valore al livello della Spesa
-    plt.annotate('', xy=(x_end, spesa), xytext=(x_end, valore),
-                 arrowprops=dict(arrowstyle='->', color='#2A9D8F', lw=3))
-
-    # Box descrittivo centrale
-    plt.text((x_start + x_end)/2, (spesa + valore)/2, 
-             f"CORREZIONE DI MERCATO\nRisparmio: {abs(gap_mln):.1f} Mln €\n(-{(abs(gap_mln)/(valore*1000))*100:.2f}%)", 
-             ha='center', va='center', fontsize=11, fontweight='bold', color='#1D3557',
-             bbox=dict(boxstyle="round,pad=0.5", fc="#e6fffa", ec="#2A9D8F", lw=2))
-
-    plt.title(f"Analisi Puntuale {target_season}: La Grande Paura", fontsize=14, fontweight='bold', pad=20)
-    plt.ylabel("Miliardi di € (Scala Zoomata)", fontsize=11)
-    plt.grid(axis='y', linestyle='--', alpha=0.3)
-    
-    salva_e_mostra(plt, os.path.join(cartella_output, 'focus_singola_stagione_2122.png'))
-
-
-def plot_pure_green_area(df_focus, cartella_output):
+def focus_AreaVerde(df_focus, cartella_output):
     """
     Grafico "Pura Geometria": 
     - No marker, No testo interno, No barre verticali.
@@ -424,4 +353,4 @@ def plot_pure_green_area(df_focus, cartella_output):
 
     salva_e_mostra(plt, os.path.join(cartella_output, 'focus_area_verde_pure.png'))
 
-# fine del file
+#==== FINE FILE ===#
