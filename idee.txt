@@ -1,0 +1,9 @@
+heatmap:
+- considerazioni globali per ogni stato ==> per ogni stato considero il campionato di massima serie (Italia: Serie A, Inghilterra: Premier League, ...)
+
+
+
+
+Come varia il prezzo di un giocatore in base alla sua età?
+Quale campionato vende ad un prezzo maggiore i suoi talenti?
+Il maggior numero di minuti giocati corrisponde ad una maggiorazione del prezzo?
