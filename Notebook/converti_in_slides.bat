@@ -1,1 +1,1 @@
-python -m nbconvert "Anatomia di un trasferimento.ipynb" --to slides --no-input
+python -m nbconvert "Progetto.ipynb" --to slides --no-input

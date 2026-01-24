@@ -350,83 +350,6 @@ def focus_AreaVerde(df_focus, cartella_output):
 
     visualizza_salva_grafico(plt, os.path.join(cartella_output, 'focus_area_verde_pure.png'))
 
-
-# Inserisci in grafici.py
-# Aggiungi 'import geopandas as gpd' all'inizio del file
-
-
-
-def plot_mappa_efficienza(df_geo, cartella_output):
-    """
-    Genera una Choropleth Map mondiale.
-    STILE: PRO (Sfondo scuro/oceano, colori accesi).
-    """
-    if df_geo.empty:
-        return
-
-    # Percorso locale mappa
-    map_file_path = os.path.join(cartella_output, "world_map_data.json")
-    url_map = "https://raw.githubusercontent.com/python-visualization/folium/main/examples/data/world-countries.json"
-
-    try:
-        # Download se manca
-        if not os.path.exists(map_file_path):
-            opener = urllib.request.build_opener()
-            opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-            urllib.request.install_opener(opener)
-            urllib.request.urlretrieve(url_map, map_file_path)
-
-        # Caricamento
-        world = gpd.read_file(map_file_path)
-        
-        # Merge
-        world_data = world.merge(df_geo, how="left", left_on="name", right_on="Country")
-        
-        # --- STYLING AGGRESSIVO ---
-        fig, ax = plt.subplots(1, 1, figsize=(20, 12)) # Formato panoramico
-        
-        # 1. Colore del Mare (Background dell'asse)
-        ax.set_facecolor('#aadaff') # Azzurro tenue professionale
-        
-        # 2. Disegno i paesi SENZA dati (Grigio scuro per contrasto o Bianco sporco)
-        world.plot(ax=ax, color='#f2f4f7', edgecolor='#999999', linewidth=0.5)
-        
-        # 3. Disegno i dati (Heatmap)
-        # cmap='plasma' o 'inferno' sono molto meglio per vedere le differenze
-        plot = world_data.dropna(subset=['Avg_Price_Mln']).plot(
-            column='Avg_Price_Mln',
-            cmap='inferno_r', # Invertito: Scuro = Caro (Miniera), Chiaro = Economico
-            linewidth=0.5,
-            ax=ax,
-            edgecolor='white', # Bordo bianco per far risaltare i paesi colorati
-            legend=False # La facciamo a mano che viene meglio
-        )
-        
-        # 4. Colorbar Personalizzata (In basso orizzontale)
-        sm = plt.cm.ScalarMappable(cmap='inferno_r', norm=plt.Normalize(
-            vmin=world_data['Avg_Price_Mln'].min(), 
-            vmax=world_data['Avg_Price_Mln'].max()))
-        sm._A = []
-        cbar = fig.colorbar(sm, ax=ax, fraction=0.035, pad=0.04, aspect=30, orientation='horizontal')
-        cbar.set_label('Prezzo Medio Giocatore (Mln €) - [Più scuro = Più Costoso]', fontsize=12, fontweight='bold')
-
-        # 5. Titoli e Annotazioni Pulite
-        plt.title("GLOBAL TRANSFER EFFICIENCY\nDove si paga la qualità?", fontsize=24, fontweight='bold', fontfamily='sans-serif', pad=20)
-        ax.axis('off') 
-        
-        # Annotazione "Miniera vs Eurospin" elegante
-        plt.figtext(0.15, 0.20, 
-            "⚫ SCURO = MINIERA D'ORO (Boutique)\n"
-            "🟡 CHIARO = SUPERMERCATO (Volume)", 
-            fontsize=14, fontweight='bold', color='#333333',
-            bbox={"facecolor":"white", "alpha":0.7, "edgecolor":"none", "pad":10}
-        )
-
-        visualizza_salva_grafico(plt, os.path.join(cartella_output, 'mappa_efficienza_globale_v2.png'))
-        
-    except Exception as e:
-        print(f"[GRAFICO - ERROR] {e}")
-
 def plot_distribuzione_eta_valore(df, cartella_output):
     """
     Boxplot: Distribuzione Valore di Mercato per Età (Segmento > 1M€).
@@ -467,4 +390,59 @@ def plot_distribuzione_eta_valore(df, cartella_output):
     print(f"[INSIGHT] L'età di picco per valore mediano è: {peak_age} anni ({peak_val:.2f} Mln €)")
 
     visualizza_salva_grafico(plt, os.path.join(cartella_output, 'boxplot_eta_valore_elite.png'))
+
+def plot_efficienza_scout(top_5_df, cartella_output):
+    """
+    Genera un Bar Plot del Risparmio Totale per le Leghe più efficienti, 
+    sostituendo i codici delle leghe con i nomi completi e centrando le etichette.
+    """
+    if top_5_df.empty:
+        print("[WARN] Nessun dato per la classifica di efficienza. Controllare i residui.")
+        return
+        
+    # --- 1. Mappatura dei Codici ---
+    mappa_leghe = {
+        'GB1': 'Premier League', # Inghilterra
+        'IT1': 'Serie A',        # Italia
+        'ES1': 'LaLiga',         # Spagna
+        'FR1': 'Ligue 1',        # Francia
+        'L1': 'Bundesliga',      # Germania
+        'PO1': 'Liga Portugal',  # Portogallo 
+        # Aggiungi qui altri codici presenti nel tuo top_5_df se necessario
+    }
+    
+    # Rinomina l'indice (le leghe) usando la mappatura
+    df_plot = top_5_df.rename(index=mappa_leghe)
+    
+    plt.figure(figsize=(14, 7))
+    
+    # --- 2. Crea il Bar Plot ---
+    sns.barplot(
+        x=df_plot.index, 
+        y=df_plot.values / 1e6, # Dividi per 1Mln
+        palette="viridis",
+        edgecolor='black',
+        linewidth=1
+    )
+    
+    # --- 3. Formattazione e Centratura ---
+    plt.title(
+        "Top 5 Leghe per Efficienza di Scouting (Risparmio Totale sui Trasferimenti)", 
+        fontsize=20, fontweight='bold', pad=20, color='#333'
+    )
+    plt.xlabel("Lega di Destinazione", fontsize=14, fontweight='bold')
+    # L'asse Y può essere Risparmio Totale (Mln €) o Efficienza Percentuale (se usi il calcolo corretto)
+    plt.ylabel("Risparmio Totale Stimato (Mln €)", fontsize=14, fontweight='bold') 
+    
+    plt.grid(axis='y', linestyle='--', alpha=0.6)
+    
+    # CORREZIONE: Imposta ha='center' per centrare l'etichetta ruotata
+    plt.xticks(rotation=45, ha='center') 
+    
+    plt.tight_layout()
+    
+    # Assumiamo che visualizza_salva_grafico si occupi di plt.show() e plt.savefig()
+    visualizza_salva_grafico(plt, os.path.join(cartella_output, 'plot_efficienza_scout.png'))
+
+
 #==== FINE FILE ===#

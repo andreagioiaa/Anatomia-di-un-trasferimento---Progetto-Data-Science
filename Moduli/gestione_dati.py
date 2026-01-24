@@ -2,6 +2,10 @@ import pandas as pd
 import os
 from scipy.stats import pearsonr
 from datetime import datetime
+import numpy as np
+
+# PREZZO MINIMO DI CONFRONTO
+PREZZO_MINIMO = 5000000
 
 def carica_dati(percorso_file):
     """Carica il csv e restituisce il DataFrame o None."""
@@ -198,60 +202,148 @@ def prepara_dati_geografici(df_transfers, df_clubs):
 
 def prepara_dati_eta_valore(df_raw):
     """
-    Prepara il dataset giocatori per l'analisi Età vs Valore.
-    Target: Stagione 23/24.
-    Filtri: Età 18-36, Valore > 1Mln.
-    Include DIAGNOSTICA per valori mancanti.
+    Prepara il dataset giocatori per l'analisi Età vs Valore, 
+    filtrando per giocatori attivi e con valore > 1M€.
     """
     print("\n[ETÀ-VALORE] --- INIZIO DIAGNOSTICA ---")
     
     if df_raw is None:
+        print("[ERROR] DataFrame iniziale vuoto.")
         return pd.DataFrame()
 
     df = df_raw.copy()
 
-    # 1. Filtro Stagione (2023)
-    # Assicuriamoci che last_season sia gestita correttamente
-    df['last_season'] = pd.to_numeric(df['last_season'], errors='coerce')
-    df = df[df['last_season'] == 2023].copy()
-    print(f" -> Giocatori attivi nella stagione 2023: {len(df)}")
-
-    # 2. Pulizia Valore di Mercato (CRUCIALE)
-    # Rimuoviamo eventuali virgole o punti se sono stringhe, prima di convertire
+    # --- 1. Pulizia Valore di Mercato (CRUCIALE) ---
+    
+    # Rimuoviamo eventuali formattazioni non numeriche prima di convertire
     if df['market_value_in_eur'].dtype == object:
         df['market_value_in_eur'] = df['market_value_in_eur'].astype(str).str.replace(',', '', regex=False)
 
     df['market_value_in_eur'] = pd.to_numeric(df['market_value_in_eur'], errors='coerce')
-    
-    # DEBUG: Vediamo se abbiamo perso qualcuno di grosso
-    top_raw = df.sort_values('market_value_in_eur', ascending=False).head(3)
-    print(f" -> Top 3 Valori grezzi trovati: {top_raw['market_value_in_eur'].tolist()}")
-
     df = df.dropna(subset=['market_value_in_eur'])
     
-    # Filtro > 1Mln
+    # --- 2. Filtro Attività/Pertinenza (La mossa per includere Mbappé ed escludere Klose) ---
+    
+    df['contract_expiration_date'] = pd.to_datetime(df['contract_expiration_date'], errors='coerce')
+    df['date_of_birth'] = pd.to_datetime(df['date_of_birth'], errors='coerce')
+    
+    # Parametri per l'analisi 2023
+    Data_Limite_Attivita = pd.to_datetime('2023-06-30')
+    Soglia_Top_Player = 50000000 # 50 Milioni
+
+    # Filtro: Contratto valido DOPO Giu 2023 OPPURE Valore di mercato > 50M (Top Player)
+    df = df[
+        (df['contract_expiration_date'] > Data_Limite_Attivita) | 
+        (df['market_value_in_eur'] > Soglia_Top_Player)
+    ].copy()
+
+    print(f" -> Giocatori ritenuti attivi (con contratto o Top Player): {len(df)}")
+    
+    # --- 3. Calcolo Età e Filtri Finali ---
+    
+    target_date = pd.to_datetime('2024-01-01') # Età calcolata al 1 Gennaio 2024 (per l'analisi 2023/24)
+    df['age'] = (target_date - df['date_of_birth']).dt.days // 365
+    
+    # Filtro valore > 1Mln
     df = df[df['market_value_in_eur'] >= 1000000]
     
-    # Convertiamo in Milioni
-    df['Valore_Mln'] = df['market_value_in_eur'] / 1e6
-
-    # 3. Pulizia Data e Calcolo Età
-    df['date_of_birth'] = pd.to_datetime(df['date_of_birth'], errors='coerce')
-    df = df.dropna(subset=['date_of_birth'])
-    
-    target_date = pd.to_datetime('2024-01-01')
-    df['age'] = (target_date - df['date_of_birth']).dt.days // 365
-
-    # 4. Filtro Età "Prime" (18-36)
+    # Filtro Età "Prime" (18-36)
     df = df[df['age'].between(18, 36)]
+    
+    # Convertiamo in Milioni per il grafico
+    df['Valore_Mln'] = df['market_value_in_eur'] / 1e6
 
     # --- DIAGNOSTICA FINALE ---
     print(f" -> Dataset finale pronto: {len(df)} giocatori.")
-    print(" -> I 5 GIOCATORI PIÙ COSTOSI NEL DATASET FILTRATO:")
-    top_players = df.sort_values('Valore_Mln', ascending=False).head(5)
+    print(f" -> TOP 5 VALORI RITROVATI (dovrebbe includere Top Player):")
+    top_players = df.sort_values('market_value_in_eur', ascending=False).head(5)
     for idx, row in top_players.iterrows():
-        print(f"    * {row['name']} ({row['age']} anni): {row['Valore_Mln']} Mln €")
+        print(f"    * {row['name']} ({row['age']} anni): {row['Valore_Mln']:.2f} Mln €")
     print("------------------------------------------\n")
     
-    return df
+    return df[['player_id', 'age', 'Valore_Mln', 'market_value_in_eur', 'current_club_domestic_competition_id']]
+
+
+
+def prepara_dati_efficienza_scout(df_transfers, df_players, df_clubs):
+    """
+    Unisce i dati di trasferimenti (transfer_fee, transfer_date), 
+    giocatori (date_of_birth) e club (competizione) per calcolare le features 
+    necessarie per il modello di Efficienza degli Scout.
+    """
+    import pandas as pd
+    
+    print("\n[EFFICIENZA SCOUT] --- PREPARAZIONE MODELLO ---")
+    
+    # 1. Pulizia e Conversione Iniziale
+    df_transfers = df_transfers.copy()
+    
+    # Rimuoviamo i trasferimenti a costo zero (spesso sono fine prestito o giovanili)
+    df_transfers = df_transfers.dropna(subset=['transfer_fee'])
+    df_transfers = df_transfers[df_transfers['transfer_fee'] > 0].copy()
+    
+    # Conversione date e pulizia ID
+    df_transfers['transfer_date'] = pd.to_datetime(df_transfers['transfer_date'], errors='coerce')
+    df_players['date_of_birth'] = pd.to_datetime(df_players['date_of_birth'], errors='coerce')
+    
+    # Assicuriamo che gli ID siano trattati come numeri interi per il merge
+    df_transfers['player_id'] = pd.to_numeric(df_transfers['player_id'], errors='coerce').astype('Int64')
+    df_players['player_id'] = pd.to_numeric(df_players['player_id'], errors='coerce').astype('Int64')
+    
+    # 2. Unione Trasferimenti e Giocatori (per l'età)
+    df_merged = df_transfers.merge(
+        df_players[['player_id', 'date_of_birth']], 
+        on='player_id', 
+        how='left'
+    )
+    
+    # 3. Calcolo Età al Trasferimento
+    df_merged['age_at_transfer'] = (df_merged['transfer_date'] - df_merged['date_of_birth']).dt.days // 365
+    
+    # Filtra trasferimenti con età ragionevole (16-40) e dove l'età è nota
+    df_merged = df_merged[df_merged['age_at_transfer'].between(16, 40)].dropna(subset=['age_at_transfer']).copy()
+    
+    print(f" -> Trasferimenti validi dopo età/fee e pulizia: {len(df_merged)}")
+
+    # 4. Aggiunta delle Leghe (Club di PROVENIENZA e DESTINAZIONE)
+    
+    df_clubs_small = df_clubs[['club_id', 'domestic_competition_id']].copy()
+    
+    # Merge per la lega di PROVENIENZA
+    df_clubs_small.columns = ['from_club_id', 'league_from'] 
+    df_final = df_merged.merge(
+        df_clubs_small, 
+        on='from_club_id', 
+        how='left'
+    )
+
+    # Merge per la lega di DESTINAZIONE
+    df_clubs_small.columns = ['to_club_id', 'league_to'] 
+    df_final = df_final.merge(
+        df_clubs_small, 
+        on='to_club_id', 
+        how='left'
+    ).dropna(subset=['league_from', 'league_to']) # Rimuovi trasferimenti in leghe sconosciute
+    
+    print(f" -> Trasferimenti con lega di provenienza e destinazione nota: {len(df_final)}")
+    
+    # 5. Preparazione Feature Finali per il Modello
+    df_model = df_final[[
+        'transfer_fee', 
+        'age_at_transfer', 
+        'league_from', 
+        'league_to', 
+        'transfer_season'
+    ]].copy()
+    
+    # 6. Encoding della Variabile Target (Log Transformation)
+    # Per stabilizzare la varianza e migliorare le performance del modello di regressione
+    df_model['log_transfer_fee'] = np.log1p(df_model['transfer_fee'])
+    
+    print(f" -> DataFrame per il modello pronto: {len(df_model)} righe.")
+    print("------------------------------------------\n")
+    
+    return df_model
+
+
 #==== FINE FILE ===#

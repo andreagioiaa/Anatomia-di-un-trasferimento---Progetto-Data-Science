@@ -1,0 +1,13 @@
+- assi in grassetto (Mld €) --> centrare anni
+- togliere pallini rossi
+- togliere Underspanding (scritte)
+--> grafico media: istogramma
+normalizzare i dati per heatmap
+--> conclusioni: una risposta da una riga
+
+ISTOGRAMMA: Vendite e Acquisti per top-5 campionati
+
+swarmplot
+
+
+Sistemare notebook, aggiungere scala logaritmica
