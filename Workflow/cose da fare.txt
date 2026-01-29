@@ -1,0 +1,6 @@
+Modifiche da apportare al progetto:
+- fattore età: rifare stesso grafico con aggiunta di ogni età: da prima dei 18 anni a dopo i 32 anni
+- verificare quali sono le stagioni effettive nel grafico delle correlazioni (acquisto-spesa) --> verificare ordine e confrontarlo
+- terza domanda: risposta più accurata è quella di dire che le stime sono sottostimate rispetto ai valori reali del mercato, i professionisti tendono a sottostimare le valutazioni dei giocatori effettivi
+
+Studiare la teoria
